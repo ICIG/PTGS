@@ -55,42 +55,75 @@ Then run:
 ```bash
 cd data_utils/face_tracking
 python convert_BFM.py
-cd ../../
-python data_utils/process.py ${YOUR_DATASET_DIR}/${DATASET_NAME}/${DATASET_NAME}.mp4 
 ```
+- Prepare the environment for [EasyPortrait](https://github.com/hukenovs/easyportrait):
+
+  ```bash
+  # prepare mmcv
+  conda activate talking_gaussian
+  pip install -U openmim
+  mim install mmcv-full==1.7.1
+
+  # download model weight
+  cd data_utils/easyportrait
+  wget "https://rndml-team-cv.obs.ru-moscow-1.hc.sbercloud.ru/datasets/easyportrait/experiments/models/fpn-fp-512.pth"
+  ```
+
 
 
 ## 🛠️ Usage
 
-To train the model:
+### Pre-processing Training Video
+
+* Put training video under `data/<ID>/<ID>.mp4`.
+
+  The video **must be 25FPS, with all frames containing the talking person**. 
+  The resolution should be about 512x512, and duration about 1-5 min.
+
+* Run script to process the video.
+
+  ```bash
+  python data_utils/process.py data/<ID>/<ID>.mp4
+  ```
+
+* Obtain Action Units
+  
+  Run `FeatureExtraction` in [OpenFace](https://github.com/TadasBaltrusaitis/OpenFace), rename and move the output CSV file to `data/<ID>/au.csv`.
+
+* Generate tooth masks
+
+  ```bash
+  export PYTHONPATH=./data_utils/easyportrait 
+  python ./data_utils/easyportrait/create_teeth_mask.py ./data/<ID>
+  ```
+
+### Audio Pre-process
+
+In our paper, we use DeepSpeech features for evaluation. 
+
+* DeepSpeech
+
+  ```bash
+  python data_utils/deepspeech_features/extract_ds_features.py --input data/<name>.wav # saved to data/<name>.npy
+  ```
+
+
+### Train
 
 ```bash
-python train.py -s ${YOUR_DATASET_DIR}/${DATASET_NAME} \
-                --model_path ${YOUR_MODEL_DIR} \
-                --configs arguments/args.py
+# If resources are sufficient, partially parallel is available to speed up the training. See the script.
+bash scripts/train_xx.sh data/<ID> output/<project_name> <GPU_ID>
 ```
-Rendering：
-```bash
-python render.py -s ${YOUR_DATASET_DIR}/${DATASET_NAME} \
-                 --model_path ${YOUR_MODEL_DIR} \
-                 --configs configs/egstalker_default.py \
-                 --iteration 10000 \
-                 --batch 16
-```
-Inference with Custom Audio:
-
-Place `<custom_aud>.wav` and `<custom_aud>.npy` in `${YOUR_DATASET_DIR}/${DATASET_NAME}` and run:
+### Test
 
 ```bash
-python render.py -s ${YOUR_DATASET_DIR}/${DATASET_NAME} \
-                 --model_path ${YOUR_MODEL_DIR} \
-                 --configs configs/egstalker_default.py \
-                 --iteration 10000 \
-                 --batch 16 \
-                 --custom_aud <custom_aud>.npy \
-                 --custom_wav <custom_aud>.wav \
-                 --skip_train \
-                 --skip_test
+# saved to output/<project_name>/test/ours_None/renders
+python synthesize_fuse.py -S data/<ID> -M output/<project_name> --eval  
 ```
 
+### Inference with Specified Audio
+
+```bash
+python synthesize_fuse.py -S data/<ID> -M output/<project_name> --use_train --audio <preprocessed_audio_feature>.npy
+```
 ---

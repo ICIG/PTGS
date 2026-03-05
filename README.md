@@ -20,6 +20,8 @@ Install optional dependencies (if not already included):
 pip install -e submodules/custom-gaussian-rasterization
 # Install simple knn for Gaussian Splatting
 pip install -e submodules/simple-knn
+#Install gridencoder
+pip install -e gridencoder
 ```
 ## 📅 Download Dataset
 
